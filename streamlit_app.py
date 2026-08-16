@@ -1,5 +1,10 @@
 import streamlit as st
-from datetime import datetime
+import pandas as pd
+import re
+
+# ---------------------------------------------------------
+# PAGE CONFIGURATION
+# ---------------------------------------------------------
 
 st.set_page_config(
     page_title="ScamShield XAI",
@@ -7,373 +12,332 @@ st.set_page_config(
     layout="wide"
 )
 
+# ---------------------------------------------------------
+# LANGUAGE DATA
+# ---------------------------------------------------------
+
 LANG = {
     "English": {
-        "title": "ScamShield XAI",
-        "sub": "Explainable AI Scam Detector",
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "Explainable AI Scam Detection System",
         "about": "About ScamShield",
-        "about_text": "ScamShield checks transaction, message, or call information for common scam indicators and explains the result.",
+        "about_text": "ScamShield analyzes calls and messages to identify suspicious scam indicators and clearly explains why something is risky.",
         "language": "Language",
-        "type": "Detection type",
-        "transaction": "Transaction",
-        "message": "Message / SMS",
-        "call": "Call",
-        "amount": "Transaction amount",
-        "beneficiary": "Is this a new beneficiary?",
-        "link": "Does the message contain a suspicious link?",
-        "unusual_time": "Is the transaction at an unusual time?",
-        "failed": "Previous failed attempts",
-        "text": "Paste the message or call transcript",
-        "urgent": "Does it contain urgent or threatening language?",
-        "unknown": "Is the caller unknown to you?",
-        "analyze": "Analyze",
-        "result": "Risk assessment",
+        "call_tab": "📞 Call Detection",
+        "message_tab": "💬 Message Detection",
+        "caller": "Caller phone number",
+        "call_text": "Enter the call conversation or what the caller said",
+        "message_text": "Paste the suspicious message here",
+        "analyze_call": "🔍 Analyze Call",
+        "analyze_message": "🔍 Analyze Message",
+        "risk": "Risk Assessment",
+        "explanation": "Explainable AI",
+        "why": "Why was this flagged?",
+        "action": "Recommended Action",
+        "safe_action": "The content appears low risk. Still verify important requests independently.",
+        "suspicious_action": "Be careful. Verify the sender, caller and request before taking action.",
+        "high_action": "Do not proceed. Verify the request through an official channel.",
         "safe": "SAFE",
         "suspicious": "SUSPICIOUS",
         "high": "HIGH RISK",
-        "score": "Risk score",
-        "explain": "Explainable AI",
-        "why": "Why was this flagged?",
-        "action": "Recommended action",
-        "safe_action": "The indicators are low. Still verify important payments before proceeding.",
-        "susp_action": "Verify the sender, beneficiary, and details before proceeding.",
-        "high_action": "Do not proceed until the sender, beneficiary, and transaction details are independently verified.",
-        "indicators": "Risk contributions",
-        "none": "No strong suspicious indicators were detected.",
-        "amount_reason": "The transaction amount is unusually high.",
-        "beneficiary_reason": "The beneficiary is new.",
-        "link_reason": "A suspicious link indicator was selected.",
-        "time_reason": "The transaction is at an unusual time.",
-        "failed_reason": "There were previous failed attempts.",
-        "urgent_reason": "The text contains urgent or threatening language.",
-        "unknown_reason": "The caller is unknown to you.",
-        "chart": "Risk contribution chart",
-        "report": "Download analysis report",
-        "disclaimer": "Prototype for hackathon demonstration. This is not a bank or law-enforcement decision system.",
-        "call_note": "For calls, paste the call transcript or describe what the caller asked you to do. This prototype does not automatically listen to phone calls.",
-        "clear": "Clear / reset"
+        "contribution": "Risk Contribution",
+        "points": "points",
+        "no_indicators": "No strong scam indicators were detected.",
+        "enter_call": "Please enter call details before analysis.",
+        "enter_message": "Please enter a message before analysis.",
+        "phone": "Phone Number",
+        "score": "Risk Score",
+        "reason": "Reason",
+        "download": "Download Analysis",
+        "prototype": "Prototype for hackathon demonstration",
+        "warning": "This is a demonstration system and should not replace official fraud investigation.",
+        "urgent": "Urgency or pressure",
+        "otp": "OTP / verification request",
+        "money": "Money or payment request",
+        "bank": "Banking information request",
+        "link": "Suspicious link",
+        "reward": "Prize / reward claim",
+        "impersonation": "Impersonation",
+        "remote": "Remote access request",
+        "new_number": "Unknown or unusual number",
+        "call_reason": "The caller used suspicious language or requested sensitive information.",
+        "message_reason": "The message contains patterns commonly associated with scams."
     },
 
-    "Tamil": {
-        "title": "ScamShield XAI",
-        "sub": "விளக்கக்கூடிய செயற்கை நுண்ணறிவு மோசடி கண்டறிதல்",
+    "தமிழ்": {
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "விளக்கக்கூடிய செயற்கை நுண்ணறிவு மோசடி கண்டறிதல் அமைப்பு",
         "about": "ScamShield பற்றி",
-        "about_text": "பரிவர்த்தனை, குறுஞ்செய்தி அல்லது அழைப்பு விவரங்களில் உள்ள பொதுவான மோசடி அறிகுறிகளை கண்டறிந்து, முடிவுக்கான காரணங்களை ScamShield விளக்குகிறது.",
+        "about_text": "ScamShield அழைப்புகள் மற்றும் குறுஞ்செய்திகளில் உள்ள சந்தேகத்திற்கிடமான அறிகுறிகளை கண்டறிந்து, அவை ஏன் ஆபத்தானவை என்பதை விளக்குகிறது.",
         "language": "மொழி",
-        "type": "கண்டறிதல் வகை",
-        "transaction": "பரிவர்த்தனை",
-        "message": "செய்தி / குறுஞ்செய்தி",
-        "call": "அழைப்பு",
-        "amount": "பரிவர்த்தனை தொகை",
-        "beneficiary": "இது புதிய பெறுநரா?",
-        "link": "செய்தியில் சந்தேகமான இணைப்பு உள்ளதா?",
-        "unusual_time": "வழக்கத்திற்கு மாறான நேரத்தில் பரிவர்த்தனை நடந்ததா?",
-        "failed": "முந்தைய தோல்வியடைந்த முயற்சிகள்",
-        "text": "செய்தி அல்லது அழைப்பு உரையை இங்கே ஒட்டவும்",
-        "urgent": "அவசரப்படுத்தும் அல்லது மிரட்டும் சொற்கள் உள்ளனவா?",
-        "unknown": "அழைப்பவர் உங்களுக்கு தெரியாதவரா?",
-        "analyze": "பகுப்பாய்வு செய்",
-        "result": "ஆபத்து மதிப்பீடு",
-        "safe": "பாதுகாப்பானது",
-        "suspicious": "சந்தேகமானது",
-        "high": "அதிக ஆபத்து",
-        "score": "ஆபத்து மதிப்பெண்",
-        "explain": "விளக்கக்கூடிய செயற்கை நுண்ணறிவு",
-        "why": "இது ஏன் எச்சரிக்கப்பட்டது?",
+        "call_tab": "📞 அழைப்பு கண்டறிதல்",
+        "message_tab": "💬 செய்தி கண்டறிதல்",
+        "caller": "அழைத்த தொலைபேசி எண்",
+        "call_text": "அழைப்பில் பேசிய தகவலை இங்கே உள்ளிடவும்",
+        "message_text": "சந்தேகத்திற்கிடமான செய்தியை இங்கே ஒட்டவும்",
+        "analyze_call": "🔍 அழைப்பை பகுப்பாய்வு செய்",
+        "analyze_message": "🔍 செய்தியை பகுப்பாய்வு செய்",
+        "risk": "ஆபத்து மதிப்பீடு",
+        "explanation": "விளக்கக்கூடிய செயற்கை நுண்ணறிவு",
+        "why": "இந்த தகவல் ஏன் எச்சரிக்கப்பட்டது?",
         "action": "பரிந்துரைக்கப்படும் நடவடிக்கை",
-        "safe_action": "வலுவான சந்தேக அறிகுறிகள் குறைவாக உள்ளன. முக்கியமான பணப்பரிவர்த்தனைகளை உறுதி செய்த பிறகே தொடரவும்.",
-        "susp_action": "அனுப்புநர், பெறுநர் மற்றும் விவரங்களை உறுதி செய்த பிறகே தொடரவும்.",
-        "high_action": "அனுப்புநர், பெறுநர் மற்றும் பரிவர்த்தனை விவரங்களை தனியாக உறுதி செய்யும் வரை தொடர வேண்டாம்.",
-        "indicators": "ஆபத்து காரணிகள்",
-        "none": "வலுவான சந்தேக அறிகுறிகள் எதுவும் கண்டறியப்படவில்லை.",
-        "amount_reason": "பரிவர்த்தனை தொகை வழக்கத்தை விட அதிகமாக உள்ளது.",
-        "beneficiary_reason": "பெறுநர் புதியவர்.",
-        "link_reason": "சந்தேகமான இணைப்பு இருப்பதாக தேர்ந்தெடுக்கப்பட்டுள்ளது.",
-        "time_reason": "பரிவர்த்தனை வழக்கத்திற்கு மாறான நேரத்தில் உள்ளது.",
-        "failed_reason": "முந்தைய தோல்வியடைந்த முயற்சிகள் உள்ளன.",
-        "urgent_reason": "செய்தியில் அவசரப்படுத்தும் அல்லது மிரட்டும் சொற்கள் உள்ளன.",
-        "unknown_reason": "அழைப்பவர் உங்களுக்கு தெரியாதவர்.",
-        "chart": "ஆபத்து காரணிகளின் வரைபடம்",
-        "report": "பகுப்பாய்வு அறிக்கையை பதிவிறக்கு",
-        "disclaimer": "ஹேக்கத்தான் செயல்விளக்கத்திற்கான முன்மாதிரி. இது வங்கி அல்லது சட்ட அமலாக்க முடிவு அமைப்பு அல்ல.",
-        "call_note": "அழைப்புகளுக்கு, அழைப்பில் பேசப்பட்ட உரையை இங்கே ஒட்டவும் அல்லது அழைப்பவர் கேட்டதை எழுதவும். இந்த முன்மாதிரி தொலைபேசி அழைப்புகளை தானாக கேட்காது.",
-        "clear": "மீட்டமை"
+        "safe_action": "இந்த தகவலில் குறைந்த அளவிலான ஆபத்து மட்டுமே காணப்படுகிறது. முக்கியமான கோரிக்கைகளை தனியாக சரிபார்க்கவும்.",
+        "suspicious_action": "கவனமாக இருங்கள். நடவடிக்கை எடுப்பதற்கு முன் அனுப்புநர் அல்லது அழைப்பாளரை சரிபார்க்கவும்.",
+        "high_action": "தொடர வேண்டாம். அதிகாரப்பூர்வ வழியின் மூலம் கோரிக்கையை சரிபார்க்கவும்.",
+        "safe": "பாதுகாப்பானது",
+        "suspicious": "சந்தேகத்திற்கிடமானது",
+        "high": "அதிக ஆபத்து",
+        "contribution": "ஆபத்து காரணிகளின் பங்களிப்பு",
+        "points": "புள்ளிகள்",
+        "no_indicators": "வலுவான மோசடி அறிகுறிகள் எதுவும் கண்டறியப்படவில்லை.",
+        "enter_call": "பகுப்பாய்வு செய்வதற்கு முன் அழைப்பு தகவலை உள்ளிடவும்.",
+        "enter_message": "பகுப்பாய்வு செய்வதற்கு முன் செய்தியை உள்ளிடவும்.",
+        "phone": "தொலைபேசி எண்",
+        "score": "ஆபத்து மதிப்பெண்",
+        "reason": "காரணம்",
+        "download": "பகுப்பாய்வை பதிவிறக்கு",
+        "prototype": "ஹேக்கத்தான் விளக்கத்திற்கான மாதிரி அமைப்பு",
+        "warning": "இது ஒரு மாதிரி அமைப்பு. அதிகாரப்பூர்வ மோசடி விசாரணைக்கு மாற்றாக இதைப் பயன்படுத்த வேண்டாம்.",
+        "urgent": "அவசரம் அல்லது அழுத்தம்",
+        "otp": "OTP / சரிபார்ப்பு கோரிக்கை",
+        "money": "பணம் அல்லது பணம் செலுத்தும் கோரிக்கை",
+        "bank": "வங்கி தகவல் கோரிக்கை",
+        "link": "சந்தேகத்திற்கிடமான இணைப்பு",
+        "reward": "பரிசு / வெகுமதி கோரிக்கை",
+        "impersonation": "ஆள்மாறாட்டம்",
+        "remote": "தொலைநிலை அணுகல் கோரிக்கை",
+        "new_number": "அறிமுகமில்லாத அல்லது வழக்கத்திற்கு மாறான எண்",
+        "call_reason": "அழைப்பாளர் சந்தேகத்திற்கிடமான வார்த்தைகளை பயன்படுத்தியிருக்கலாம் அல்லது முக்கியமான தகவலை கேட்டிருக்கலாம்.",
+        "message_reason": "இந்த செய்தியில் பொதுவாக மோசடிகளில் காணப்படும் சில அறிகுறிகள் உள்ளன."
     },
 
     "Hindi": {
-        "title": "ScamShield XAI",
-        "sub": "व्याख्यात्मक AI घोटाला पहचान प्रणाली",
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "व्याख्यात्मक AI घोटाला पहचान प्रणाली",
         "about": "ScamShield के बारे में",
-        "about_text": "ScamShield लेनदेन, संदेश या कॉल की जानकारी में सामान्य घोटाला संकेतों की जांच करता है और परिणाम का कारण बताता है।",
+        "about_text": "ScamShield कॉल और संदेशों में संदिग्ध संकेतों की पहचान करता है और बताता है कि वे जोखिमपूर्ण क्यों हैं।",
         "language": "भाषा",
-        "type": "जांच का प्रकार",
-        "transaction": "लेनदेन",
-        "message": "संदेश / SMS",
-        "call": "कॉल",
-        "amount": "लेनदेन राशि",
-        "beneficiary": "क्या यह नया प्राप्तकर्ता है?",
-        "link": "क्या संदेश में संदिग्ध लिंक है?",
-        "unusual_time": "क्या लेनदेन असामान्य समय पर हुआ?",
-        "failed": "पिछले असफल प्रयास",
-        "text": "संदेश या कॉल का विवरण यहां लिखें",
-        "urgent": "क्या इसमें जल्दबाजी या धमकी वाली भाषा है?",
-        "unknown": "क्या कॉल करने वाला व्यक्ति आपके लिए अनजान है?",
-        "analyze": "विश्लेषण करें",
-        "result": "जोखिम मूल्यांकन",
+        "call_tab": "📞 कॉल पहचान",
+        "message_tab": "💬 संदेश पहचान",
+        "caller": "कॉलर का फोन नंबर",
+        "call_text": "कॉल में कही गई बात यहां लिखें",
+        "message_text": "संदिग्ध संदेश यहां पेस्ट करें",
+        "analyze_call": "🔍 कॉल का विश्लेषण करें",
+        "analyze_message": "🔍 संदेश का विश्लेषण करें",
+        "risk": "जोखिम मूल्यांकन",
+        "explanation": "व्याख्यात्मक AI",
+        "why": "इसे क्यों चिन्हित किया गया?",
+        "action": "सुझाई गई कार्रवाई",
+        "safe_action": "जोखिम कम दिखाई देता है। फिर भी महत्वपूर्ण अनुरोधों को स्वतंत्र रूप से सत्यापित करें।",
+        "suspicious_action": "सावधान रहें। कार्रवाई करने से पहले प्रेषक या कॉलर को सत्यापित करें।",
+        "high_action": "आगे न बढ़ें। आधिकारिक माध्यम से अनुरोध सत्यापित करें।",
         "safe": "सुरक्षित",
         "suspicious": "संदिग्ध",
         "high": "उच्च जोखिम",
+        "contribution": "जोखिम योगदान",
+        "points": "अंक",
+        "no_indicators": "कोई मजबूत घोटाला संकेत नहीं मिला।",
+        "enter_call": "विश्लेषण से पहले कॉल की जानकारी दर्ज करें।",
+        "enter_message": "विश्लेषण से पहले संदेश दर्ज करें।",
+        "phone": "फोन नंबर",
         "score": "जोखिम स्कोर",
-        "explain": "व्याख्यात्मक AI",
-        "why": "इसे संदिग्ध क्यों माना गया?",
-        "action": "अनुशंसित कार्रवाई",
-        "safe_action": "मजबूत संदिग्ध संकेत कम हैं। फिर भी महत्वपूर्ण भुगतान से पहले विवरण की पुष्टि करें।",
-        "susp_action": "आगे बढ़ने से पहले भेजने वाले, प्राप्तकर्ता और विवरण की पुष्टि करें।",
-        "high_action": "स्वतंत्र रूप से पुष्टि किए बिना आगे न बढ़ें।",
-        "indicators": "जोखिम के कारण",
-        "none": "कोई मजबूत संदिग्ध संकेत नहीं मिला।",
-        "amount_reason": "लेनदेन राशि सामान्य से अधिक है।",
-        "beneficiary_reason": "प्राप्तकर्ता नया है।",
-        "link_reason": "संदिग्ध लिंक का संकेत चुना गया है।",
-        "time_reason": "लेनदेन असामान्य समय पर है।",
-        "failed_reason": "पिछले असफल प्रयास हुए हैं।",
-        "urgent_reason": "संदेश में जल्दबाजी या धमकी वाली भाषा है।",
-        "unknown_reason": "कॉल करने वाला व्यक्ति अनजान है।",
-        "chart": "जोखिम योगदान चार्ट",
-        "report": "विश्लेषण रिपोर्ट डाउनलोड करें",
-        "disclaimer": "हैकथॉन प्रदर्शन के लिए प्रोटोटाइप। यह बैंक या कानून प्रवर्तन निर्णय प्रणाली नहीं है।",
-        "call_note": "कॉल के लिए, बातचीत का विवरण यहां लिखें। यह प्रोटोटाइप फोन कॉल को अपने आप नहीं सुनता।",
-        "clear": "रीसेट"
+        "reason": "कारण",
+        "download": "विश्लेषण डाउनलोड करें",
+        "prototype": "हैकाथॉन प्रदर्शन के लिए प्रोटोटाइप",
+        "warning": "यह एक प्रदर्शन प्रणाली है और आधिकारिक धोखाधड़ी जांच का विकल्प नहीं है।",
+        "urgent": "जल्दबाजी या दबाव",
+        "otp": "OTP / सत्यापन अनुरोध",
+        "money": "पैसे या भुगतान का अनुरोध",
+        "bank": "बैंक जानकारी का अनुरोध",
+        "link": "संदिग्ध लिंक",
+        "reward": "इनाम / पुरस्कार का दावा",
+        "impersonation": "किसी और की पहचान का उपयोग",
+        "remote": "रिमोट एक्सेस का अनुरोध",
+        "new_number": "अज्ञात या असामान्य नंबर",
+        "call_reason": "कॉलर ने संदिग्ध भाषा का उपयोग किया या संवेदनशील जानकारी मांगी।",
+        "message_reason": "संदेश में आम घोटाला पैटर्न दिखाई देते हैं।"
     }
 }
 
+# ---------------------------------------------------------
+# SCAM INDICATORS
+# ---------------------------------------------------------
 
-def get_level(score):
-    if score >= 70:
-        return "high"
-    if score >= 35:
-        return "suspicious"
-    return "safe"
+INDICATORS = {
+    "Urgency or pressure": {
+        "weight": 20,
+        "keywords": [
+            "urgent", "immediately", "act now", "hurry",
+            "இப்போதே", "அவசரம்", "உடனே",
+            "तुरंत", "अभी", "जल्दी"
+        ]
+    },
 
+    "OTP / verification request": {
+        "weight": 25,
+        "keywords": [
+            "otp", "one time password", "verification code",
+            "otp சொல்லுங்கள்", "otp கூறுங்கள்",
+            "ओटीपी", "वन टाइम पासवर्ड", "वेरिफिकेशन कोड"
+        ]
+    },
 
-def make_bar(label, points, max_points):
-    width = int((points / max_points) * 100)
+    "Money or payment request": {
+        "weight": 25,
+        "keywords": [
+            "send money", "transfer money", "pay", "payment",
+            "upi", "refund fee", "processing fee",
+            "பணம் அனுப்ப", "பணம் செலுத்த", "கட்டணம்",
+            "पैसे भेजें", "भुगतान", "फीस"
+        ]
+    },
 
-    if width < 5:
-        width = 5
+    "Banking information request": {
+        "weight": 25,
+        "keywords": [
+            "bank account", "account number", "card number",
+            "cvv", "pin", "password",
+            "வங்கி கணக்கு", "அட்டை எண்", "ரகசிய எண்",
+            "बैंक खाता", "कार्ड नंबर", "पासवर्ड"
+        ]
+    },
 
-    if points >= 25:
-        fill = "#d32f2f"
-    elif points >= 10:
-        fill = "#f9a825"
-    else:
-        fill = "#2e7d32"
+    "Suspicious link": {
+        "weight": 25,
+        "keywords": [
+            "http://", "https://", "www.", ".xyz", ".top",
+            ".click", "bit.ly", "tinyurl",
+            "இணைப்பை திற", "லிங்கை திற",
+            "लिंक खोलें"
+        ]
+    },
 
-    st.markdown(
-        f'<div style="margin:8px 0;">'
-        f'<div style="display:flex;justify-content:space-between;">'
-        f'<span>{label}</span><b>{points} points</b></div>'
-        f'<div style="background:#e8e8e8;border-radius:8px;height:14px;">'
-        f'<div style="background:{fill};width:{width}%;height:14px;border-radius:8px;"></div>'
-        f'</div></div>',
-        unsafe_allow_html=True
-    )
+    "Prize / reward claim": {
+        "weight": 20,
+        "keywords": [
+            "winner", "won", "lottery", "prize", "reward",
+            "cashback", "gift",
+            "வெற்றி", "பரிசு", "லாட்டரி",
+            "विजेता", "इनाम", "लॉटरी"
+        ]
+    },
 
+    "Impersonation": {
+        "weight": 25,
+        "keywords": [
+            "bank officer", "police", "government officer",
+            "customer care", "income tax", "rbi",
+            "வங்கி அதிகாரி", "போலீஸ்", "அரசு அதிகாரி",
+            "बैंक अधिकारी", "पुलिस", "सरकारी अधिकारी"
+        ]
+    },
 
-with st.sidebar:
-    st.header("ScamShield")
+    "Remote access request": {
+        "weight": 25,
+        "keywords": [
+            "anydesk", "teamviewer", "remote access",
+            "screen share", "install app",
+            "ஸ்கிரீன் பகிர", "ஆப் நிறுவ",
+            "स्क्रीन शेयर", "ऐप इंस्टॉल"
+        ]
+    }
+}
 
-    language = st.selectbox(
-        "Language / மொழி / भाषा",
-        list(LANG.keys())
-    )
+# ---------------------------------------------------------
+# CUSTOM CSS
+# ---------------------------------------------------------
 
-    t = LANG[language]
+st.markdown(
+    """
+    <style>
+    .risk-card {
+        padding: 18px;
+        border-radius: 12px;
+        margin-top: 10px;
+        margin-bottom: 20px;
+        font-size: 22px;
+        font-weight: bold;
+    }
 
-    st.markdown("---")
-    st.subheader(t["about"])
-    st.write(t["about_text"])
+    .safe-card {
+        background-color: #d9f7df;
+        border-left: 8px solid #16a34a;
+        color: #166534;
+    }
 
+    .suspicious-card {
+        background-color: #fff1cc;
+        border-left: 8px solid #f59e0b;
+        color: #92400e;
+    }
 
-t = LANG[language]
+    .high-card {
+        background-color: #ffdede;
+        border-left: 8px solid #dc2626;
+        color: #991b1b;
+    }
 
-st.title("🛡️ " + t["title"])
-st.subheader(t["sub"])
+    .bar-container {
+        width: 100%;
+        background-color: #eeeeee;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
 
+    .bar {
+        padding: 8px;
+        color: white;
+        font-weight: bold;
+        border-radius: 8px;
+    }
 
-detection_type = st.radio(
-    t["type"],
-    [
-        t["transaction"],
-        t["message"],
-        t["call"]
-    ],
-    horizontal=True
+    .red-bar {
+        background-color: #dc2626;
+    }
+
+    .orange-bar {
+        background-color: #f59e0b;
+    }
+
+    .green-bar {
+        background-color: #16a34a;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
+# ---------------------------------------------------------
+# HEADER
+# ---------------------------------------------------------
 
-if detection_type == t["transaction"]:
-    st.info(
-        "Enter the transaction details and select any warning signs."
-    )
+st.sidebar.title("🛡️ ScamShield")
+st.sidebar.write("Explainable AI Scam Detection")
 
-elif detection_type == t["message"]:
-    st.info(
-        "Paste the message below. The prototype checks common scam indicators."
-    )
-
-else:
-    st.info(t["call_note"])
-
-
-amount = 0.0
-new_beneficiary = False
-suspicious_link = False
-unusual_time = False
-failed_attempts = 0
-urgent_language = False
-unknown_caller = False
-text = ""
-
-
-if detection_type == t["transaction"]:
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        amount = st.number_input(
-            t["amount"],
-            min_value=0.0,
-            value=1000.0,
-            step=500.0
-        )
-
-        new_beneficiary = st.checkbox(
-            t["beneficiary"]
-        )
-
-        unusual_time = st.checkbox(
-            t["unusual_time"]
-        )
-
-    with col2:
-        failed_attempts = st.number_input(
-            t["failed"],
-            min_value=0,
-            max_value=20,
-            value=0,
-            step=1
-        )
-
-        suspicious_link = st.checkbox(
-            t["link"]
-        )
-
-        urgent_language = st.checkbox(
-            t["urgent"]
-        )
-
-else:
-
-    text = st.text_area(
-        t["text"],
-        height=180
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        suspicious_link = st.checkbox(
-            t["link"]
-        )
-
-        urgent_language = st.checkbox(
-            t["urgent"]
-        )
-
-    with col2:
-
-        if detection_type == t["call"]:
-            unknown_caller = st.checkbox(
-                t["unknown"]
-            )
-
-        unusual_time = st.checkbox(
-            t["unusual_time"]
-        )
-
-
-analyze = st.button(
-    t["analyze"],
-    type="primary",
-    use_container_width=True
+language = st.sidebar.selectbox(
+    "Language / மொழி / भाषा",
+    ["English", "தமிழ்", "Hindi"]
 )
 
+T = LANG[language]
 
-if analyze:
+st.sidebar.markdown("---")
+st.sidebar.subheader(T["about"])
+st.sidebar.write(T["about_text"])
 
-    score = 0
-    contributions = []
+st.title(T["title"])
+st.subheader(T["subtitle"])
 
-    if amount >= 50000:
-        score += 30
-        contributions.append(
-            (t["amount_reason"], 30)
-        )
+st.info(T["warning"])
 
-    elif amount >= 10000:
-        score += 15
-        contributions.append(
-            (t["amount_reason"], 15)
-        )
+# ---------------------------------------------------------
+# ANALYSIS FUNCTION
+# ---------------------------------------------------------
 
-    if new_beneficiary:
-        score += 25
-        contributions.append(
-            (t["beneficiary_reason"], 25)
-        )
+def analyze_content(text, phone_number=""):
+    text_lower = text.lower()
 
-    if suspicious_link:
-        score += 30
-        contributions.append(
-            (t["link_reason"], 30)
-        )
+    found = []
 
-    if unusual_time:
-        score += 10
-        contributions.append(
-            (t["time_reason"], 10)
-        )
-
-    if failed_attempts > 0:
-        points = min(
-            failed_attempts * 5,
-            15
-        )
-
-        score += points
-
-        contributions.append(
-            (t["failed_reason"], points)
-        )
-
-    if urgent_language:
-        score += 20
-
-        contributions.append(
-            (t["urgent_reason"], 20)
-        )
-
-    if unknown_caller:
-        score += 20
-
-        contributions.append(
-            (t["unknown_reason"], 20)
-        )
-
-
-    lower_text = text.lower()
-
-    scam_words = [
-        "otp",
-        "password",
+    for name, data
