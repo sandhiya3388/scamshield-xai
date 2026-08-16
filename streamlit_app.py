@@ -162,4 +162,4 @@ T = {
 "contribution":"📊 Risk Contribution",
 "action":"🛡️ Recommended Action",
 "history":"🕘 Recent Analysis",
-"download":"📥
+"download":"📥Download Report"
