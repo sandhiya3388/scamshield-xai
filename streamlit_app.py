@@ -1,139 +1,160 @@
 import streamlit as st
 
-# -----------------------------
+# =========================================================
 # PAGE CONFIGURATION
-# -----------------------------
+# =========================================================
 
 st.set_page_config(
-    page_title="ScamShield XAI",
+    page_title="ScamShield AI",
     page_icon="🛡️",
     layout="wide"
 )
 
-# -----------------------------
+# =========================================================
 # HEADER
-# -----------------------------
+# =========================================================
 
 st.title("🛡️ ScamShield AI")
 st.subheader("Explainable Scam Detection System")
 
 st.write(
-    "Analyze a transaction and understand exactly why it may be risky."
+    "Analyze a transaction, identify suspicious indicators, "
+    "and understand why the transaction was classified as risky."
 )
 
 st.divider()
 
-# -----------------------------
+# =========================================================
 # SIDEBAR
-# -----------------------------
+# =========================================================
 
-st.sidebar.header("📌 About ScamShield")
+st.sidebar.title("🛡️ ScamShield")
 
 st.sidebar.write(
-    "ScamShield analyzes transaction behaviour and identifies "
-    "suspicious indicators."
+    "An Explainable AI prototype for detecting suspicious "
+    "financial transactions."
 )
 
 st.sidebar.info(
-    "The Explainable AI layer shows which factors contributed "
-    "to the risk score."
+    "The system does not only provide a risk score. "
+    "It explains the factors that contributed to the decision."
 )
 
-# -----------------------------
+st.sidebar.markdown("### Risk Levels")
+st.sidebar.write("🟢 0–30 : Low Risk")
+st.sidebar.write("🟠 31–60 : Suspicious")
+st.sidebar.write("🔴 61–100 : High Risk")
+
+# =========================================================
 # TRANSACTION INPUT
-# -----------------------------
+# =========================================================
 
 st.header("💳 Transaction Details")
+
+# Quick demo first
+st.subheader("🎯 Quick Demo")
+
+demo = st.selectbox(
+    "Choose a sample transaction",
+    [
+        "Custom Transaction",
+        "🔴 Suspicious Transaction",
+        "🟢 Normal Transaction",
+        "🟠 Moderately Suspicious Transaction"
+    ]
+)
+
+# Default values
+default_amount = 25000
+default_usual = 3000
+default_beneficiary = "Yes"
+default_time = 2
+default_link = "Yes"
+default_failed = 2
+
+if demo == "🟢 Normal Transaction":
+    default_amount = 1500
+    default_usual = 3000
+    default_beneficiary = "No"
+    default_time = 14
+    default_link = "No"
+    default_failed = 0
+
+elif demo == "🟠 Moderately Suspicious Transaction":
+    default_amount = 7000
+    default_usual = 3000
+    default_beneficiary = "Yes"
+    default_time = 14
+    default_link = "No"
+    default_failed = 1
+
+# =========================================================
+# INPUT COLUMNS
+# =========================================================
 
 col1, col2 = st.columns(2)
 
 with col1:
 
     amount = st.number_input(
-        "Transaction Amount (₹)",
+        "💰 Transaction Amount (₹)",
         min_value=0,
-        value=25000
+        value=default_amount,
+        step=500
     )
 
     usual_amount = st.number_input(
-        "User's Usual Transaction Amount (₹)",
+        "📊 User's Usual Transaction Amount (₹)",
         min_value=0,
-        value=3000
+        value=default_usual,
+        step=500
     )
 
     new_beneficiary = st.selectbox(
-        "New Beneficiary?",
-        ["No", "Yes"]
+        "👤 New Beneficiary?",
+        ["No", "Yes"],
+        index=1 if default_beneficiary == "Yes" else 0
     )
 
 with col2:
 
     transaction_hour = st.slider(
-        "Transaction Time",
+        "🕐 Transaction Time",
         0,
         23,
-        14
+        default_time
     )
 
     suspicious_link = st.selectbox(
-        "Suspicious Link Associated?",
-        ["No", "Yes"]
+        "🔗 Suspicious Link Associated?",
+        ["No", "Yes"],
+        index=1 if default_link == "Yes" else 0
     )
 
     failed_attempts = st.number_input(
-        "Previous Failed Attempts",
+        "⚠️ Previous Failed Attempts",
         min_value=0,
         max_value=10,
-        value=0
+        value=default_failed
     )
 
 st.divider()
 
-# -----------------------------
-# DEMO TRANSACTIONS
-# -----------------------------
+# =========================================================
+# ANALYZE BUTTON
+# =========================================================
 
-st.header("🎯 Quick Demo")
-
-demo = st.selectbox(
-    "Choose a sample transaction",
-    [
-        "Custom Transaction",
-        "🔴 Example: Suspicious Transaction",
-        "🟢 Example: Normal Transaction"
-    ]
-)
-
-if demo == "🔴 Example: Suspicious Transaction":
-
-    amount = 25000
-    usual_amount = 3000
-    new_beneficiary = "Yes"
-    transaction_hour = 2
-    suspicious_link = "Yes"
-    failed_attempts = 2
-
-elif demo == "🟢 Example: Normal Transaction":
-
-    amount = 1500
-    usual_amount = 3000
-    new_beneficiary = "No"
-    transaction_hour = 14
-    suspicious_link = "No"
-    failed_attempts = 0
-
-# -----------------------------
-# ANALYSIS
-# -----------------------------
-
-if st.button("🔍 Analyze Transaction", use_container_width=True):
+if st.button(
+    "🔍 ANALYZE TRANSACTION",
+    use_container_width=True
+):
 
     risk_score = 0
     factors = []
 
-    # -------------------------
-    # AMOUNT ANALYSIS
-    # -------------------------
+    # =====================================================
+    # 1. TRANSACTION AMOUNT
+    # =====================================================
 
     if usual_amount > 0:
 
@@ -148,9 +169,10 @@ if st.button("🔍 Analyze Transaction", use_container_width=True):
                 "score": 30,
                 "level": "HIGH",
                 "explanation":
-                    f"The transaction amount ₹{amount:,.0f} "
-                    f"is about {ratio:.1f}× the user's usual "
-                    f"amount of ₹{usual_amount:,.0f}."
+                    f"The transaction amount of ₹{amount:,.0f} "
+                    f"is approximately {ratio:.1f} times higher "
+                    f"than the user's usual amount of "
+                    f"₹{usual_amount:,.0f}."
             })
 
         elif ratio >= 2:
@@ -162,14 +184,14 @@ if st.button("🔍 Analyze Transaction", use_container_width=True):
                 "score": 15,
                 "level": "MEDIUM",
                 "explanation":
-                    f"The transaction amount ₹{amount:,.0f} "
-                    f"is significantly higher than the usual "
-                    f"amount of ₹{usual_amount:,.0f}."
+                    f"The transaction amount of ₹{amount:,.0f} "
+                    f"is significantly higher than the user's "
+                    f"usual amount of ₹{usual_amount:,.0f}."
             })
 
-    # -------------------------
-    # BENEFICIARY ANALYSIS
-    # -------------------------
+    # =====================================================
+    # 2. NEW BENEFICIARY
+    # =====================================================
 
     if new_beneficiary == "Yes":
 
@@ -180,13 +202,14 @@ if st.button("🔍 Analyze Transaction", use_container_width=True):
             "score": 25,
             "level": "HIGH",
             "explanation":
-                "The receiver is newly added. New beneficiaries "
-                "can increase the risk of unauthorized transfers."
+                "The receiver is newly added. "
+                "A newly added beneficiary can increase "
+                "the risk of unauthorized transactions."
         })
 
-    # -------------------------
-    # LINK ANALYSIS
-    # -------------------------
+    # =====================================================
+    # 3. SUSPICIOUS LINK
+    # =====================================================
 
     if suspicious_link == "Yes":
 
@@ -197,13 +220,14 @@ if st.button("🔍 Analyze Transaction", use_container_width=True):
             "score": 30,
             "level": "HIGH",
             "explanation":
-                "A suspicious link is associated with the "
-                "transaction and may indicate phishing or fraud."
+                "A potentially suspicious link is associated "
+                "with the transaction. This may indicate "
+                "phishing or fraudulent activity."
         })
 
-    # -------------------------
-    # TIME ANALYSIS
-    # -------------------------
+    # =====================================================
+    # 4. UNUSUAL TIME
+    # =====================================================
 
     if transaction_hour < 6 or transaction_hour >= 23:
 
@@ -215,13 +239,13 @@ if st.button("🔍 Analyze Transaction", use_container_width=True):
             "level": "MEDIUM",
             "explanation":
                 f"The transaction occurred around "
-                f"{transaction_hour:02d}:00, which is outside "
-                "the user's typical activity period."
+                f"{transaction_hour:02d}:00, which is an "
+                "unusual time for financial activity."
         })
 
-    # -------------------------
-    # FAILED ATTEMPTS
-    # -------------------------
+    # =====================================================
+    # 5. FAILED ATTEMPTS
+    # =====================================================
 
     if failed_attempts >= 3:
 
@@ -249,62 +273,96 @@ if st.button("🔍 Analyze Transaction", use_container_width=True):
                 "were detected."
         })
 
+    # Maximum risk score
     risk_score = min(risk_score, 100)
 
     st.divider()
 
-    # -----------------------------
-    # RISK RESULT
-    # -----------------------------
+    # =====================================================
+    # RISK ASSESSMENT
+    # =====================================================
 
     st.header("🚨 Risk Assessment")
 
     if risk_score >= 61:
 
+        risk_level = "HIGH RISK"
+
         st.error(
             f"🚨 HIGH RISK — {risk_score}/100"
         )
 
-        risk_level = "HIGH RISK"
-
     elif risk_score >= 31:
+
+        risk_level = "SUSPICIOUS"
 
         st.warning(
             f"⚠️ SUSPICIOUS — {risk_score}/100"
         )
 
-        risk_level = "SUSPICIOUS"
-
     else:
+
+        risk_level = "LOW RISK"
 
         st.success(
             f"✅ LOW RISK — {risk_score}/100"
         )
 
-        risk_level = "LOW RISK"
+    # =====================================================
+    # RISK PROGRESS BAR
+    # =====================================================
 
-    # -----------------------------
-    # RISK SCORE
-    # -----------------------------
+    st.progress(
+        risk_score / 100
+    )
 
-    st.progress(risk_score / 100)
+    # =====================================================
+    # SUMMARY CARDS
+    # =====================================================
 
-    # -----------------------------
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Risk Score",
+            f"{risk_score}/100"
+        )
+
+    with col2:
+
+        st.metric(
+            "Risk Factors",
+            len(factors)
+        )
+
+    with col3:
+
+        st.metric(
+            "Status",
+            risk_level
+        )
+
+    st.divider()
+
+    # =====================================================
     # EXPLAINABLE AI
-    # -----------------------------
+    # =====================================================
 
     st.header("🤖 Explainable AI")
 
-    if factors:
+    st.write(
+        "The system breaks down the risk score into individual "
+        "factors so the user can understand why the transaction "
+        "was flagged."
+    )
 
-        st.write(
-            "The following factors contributed to the risk score:"
-        )
+    if factors:
 
         for factor in factors:
 
             with st.expander(
-                f"{factor['name']}  →  +{factor['score']} points"
+                f"🔎 {factor['name']}  |  +{factor['score']} points"
             ):
 
                 st.write(
@@ -312,86 +370,123 @@ if st.button("🔍 Analyze Transaction", use_container_width=True):
                 )
 
                 st.write(
-                    f"**Why it matters:** {factor['explanation']}"
+                    f"**Contribution:** +{factor['score']} points"
+                )
+
+                st.write(
+                    f"**Why it matters:** "
+                    f"{factor['explanation']}"
                 )
 
     else:
 
         st.success(
-            "No major suspicious indicators were detected."
+            "No suspicious indicators were detected."
         )
 
-    # -----------------------------
-    # MAIN EXPLANATION
-    # -----------------------------
+    # =====================================================
+    # RISK CONTRIBUTION CHART
+    # =====================================================
 
-    st.header("🔎 Why was this transaction flagged?")
+    if factors:
+
+        st.header("📊 Risk Contribution")
+
+        chart_data = {
+            factor["name"]: factor["score"]
+            for factor in factors
+        }
+
+        st.bar_chart(chart_data)
+
+        st.caption(
+            "Higher values indicate a stronger contribution "
+            "to the overall risk score."
+        )
+
+    # =====================================================
+    # MAIN AI EXPLANATION
+    # =====================================================
+
+    st.header("🔎 Why Was This Transaction Flagged?")
 
     if risk_score >= 61:
 
         st.write(
-            f"This transaction is classified as **{risk_level}** "
-            f"with a risk score of **{risk_score}/100**. "
-            "Multiple unusual indicators were detected together. "
-            "The combination of these factors increases the "
-            "possibility of fraudulent activity."
+            f"This transaction is classified as **HIGH RISK** "
+            f"with a score of **{risk_score}/100**. "
+            "Multiple suspicious indicators were detected "
+            "together. The combination of unusual transaction "
+            "behaviour, beneficiary information, links, timing, "
+            "and failed attempts increased the overall risk."
         )
 
     elif risk_score >= 31:
 
         st.write(
-            f"This transaction is classified as **{risk_level}** "
-            f"with a risk score of **{risk_score}/100**. "
-            "Some unusual behaviour was detected, so the "
-            "transaction should be verified before proceeding."
+            f"This transaction is classified as **SUSPICIOUS** "
+            f"with a score of **{risk_score}/100**. "
+            "Some unusual behaviour was detected. "
+            "The transaction should be verified before proceeding."
         )
 
     else:
 
         st.write(
-            f"This transaction has a **{risk_level}** score of "
-            f"**{risk_score}/100**. No major suspicious indicators "
-            "were detected from the information provided."
+            f"This transaction has a **LOW RISK** score of "
+            f"**{risk_score}/100**. "
+            "No major suspicious indicators were detected "
+            "from the provided information."
         )
 
-    # -----------------------------
+    # =====================================================
     # RECOMMENDED ACTION
-    # -----------------------------
+    # =====================================================
 
     st.header("🛡️ Recommended Action")
 
     if risk_score >= 61:
 
         st.error(
-            "Do not proceed until the beneficiary and transaction "
-            "details are verified."
+            "🛑 HOLD TRANSACTION\n\n"
+            "Verify the beneficiary and transaction details "
+            "before proceeding."
         )
 
     elif risk_score >= 31:
 
         st.warning(
-            "Verify the beneficiary and transaction details "
+            "⚠️ VERIFY TRANSACTION\n\n"
+            "Confirm the recipient and transaction details "
             "before proceeding."
         )
 
     else:
 
         st.success(
-            "No immediate warning indicators were detected. "
-            "Continue to follow normal security practices."
+            "✅ TRANSACTION CAN PROCEED\n\n"
+            "No major warning indicators were detected."
         )
 
-    # -----------------------------
-    # XAI FLOW
-    # -----------------------------
+    # =====================================================
+    # XAI PIPELINE
+    # =====================================================
 
     st.divider()
 
-    st.caption(
-        "Transaction Data → Risk Indicators → Risk Score → "
-        "Feature Contributions → Human-Readable Explanation"
+    st.subheader("🧠 Explainable AI Pipeline")
+
+    st.write(
+        "Transaction Data"
+        "  →  Risk Indicators"
+        "  →  Risk Score"
+        "  →  Feature Contributions"
+        "  →  Human-Readable Explanation"
     )
 
     st.caption(
-        "Prototype for hackathon demonstration."
+        "ScamShield XAI is a hackathon prototype. "
+        "A production banking system would require validated "
+        "machine-learning models, secure banking integrations, "
+        "and additional fraud-prevention controls."
     )
