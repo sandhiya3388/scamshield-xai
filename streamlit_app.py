@@ -1,434 +1,476 @@
-import re
-import math
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
+import pandas as pd
 
-# -----------------------------------------------------------------------
-# PAGE CONFIG
-# -----------------------------------------------------------------------
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
+
 st.set_page_config(
-    page_title="Scam & Fraud Detection Dashboard",
+    page_title="ScamShield XAI",
     page_icon="🛡️",
-    layout="wide",
+    layout="wide"
 )
 
-# -----------------------------------------------------------------------
-# GLOBAL STYLES
-# -----------------------------------------------------------------------
-st.markdown(
-    """
-    <style>
-    .big-risk-high {
-        background-color:#ffe3e3; color:#b30000; padding:16px;
-        border-radius:12px; font-size:24px; font-weight:800; text-align:center;
-        border:2px solid #ff4d4d;
+# =========================================================
+# LANGUAGE DATA
+# =========================================================
+
+LANGUAGES = {
+    "English": {
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "Explainable AI Scam Detection System",
+
+        "mode": "Detection Mode",
+        "transaction": "💳 Transaction",
+        "message": "💬 Message",
+        "call": "📞 Call",
+
+        "amount": "Transaction Amount",
+        "new": "New Beneficiary",
+        "failed": "Previous Failed Attempts",
+        "unusual": "Unusual Transaction Time",
+        "link": "Suspicious Link",
+
+        "analyze": "🔍 Analyze",
+        "reset": "🔄 Reset",
+
+        "risk": "Risk Score",
+        "factors": "Number of Risk Factors",
+        "chart": "📊 Risk Contribution Chart",
+
+        "ai": "🤖 Explainable AI",
+        "why": "🔎 Why Was This Transaction Flagged?",
+        "action": "🛡️ Recommended Action",
+        "pipeline": "🧠 Explainable AI Pipeline",
+
+        "safe": "SAFE",
+        "suspicious": "SUSPICIOUS",
+        "high": "HIGH RISK",
+
+        "safe_action": "The transaction appears relatively safe. Continue to stay alert.",
+        "suspicious_action": "Verify the beneficiary and transaction details before proceeding.",
+        "high_action": "Do not proceed until the transaction is verified through an official channel.",
+
+        "message_input": "Paste the message here",
+        "call_input": "Paste the call transcript here",
+
+        "empty": "Please enter some information first.",
+
+        "amount_high": "High transaction amount",
+        "amount_medium": "Higher-than-normal transaction amount",
+        "new_factor": "New beneficiary",
+        "failed_factor": "Previous failed attempts",
+        "unusual_factor": "Unusual transaction time",
+        "link_factor": "Suspicious link",
+
+        "otp_factor": "OTP / verification code request",
+        "urgent_factor": "Urgent or threatening language",
+        "remote_factor": "Remote access request",
+        "bank_factor": "Possible bank impersonation",
+        "prize_factor": "Prize / reward claim",
+        "external_factor": "External link detected",
+
+        "footer": "Hackathon prototype — Explainable AI based scam detection."
+    },
+
+    "Tamil": {
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "விளக்கக்கூடிய AI மோசடி கண்டறிதல் அமைப்பு",
+
+        "mode": "கண்டறிதல் வகை",
+        "transaction": "💳 பரிவர்த்தனை",
+        "message": "💬 குறுஞ்செய்தி",
+        "call": "📞 அழைப்பு",
+
+        "amount": "பரிவர்த்தனை தொகை",
+        "new": "புதிய பயனாளி",
+        "failed": "முந்தைய தோல்வியடைந்த முயற்சிகள்",
+        "unusual": "வழக்கத்திற்கு மாறான நேரம்",
+        "link": "சந்தேகமான இணைப்பு",
+
+        "analyze": "🔍 ஆய்வு செய்",
+        "reset": "🔄 மீட்டமை",
+
+        "risk": "ஆபத்து மதிப்பெண்",
+        "factors": "ஆபத்து காரணிகளின் எண்ணிக்கை",
+        "chart": "📊 ஆபத்து காரணிகளின் பங்களிப்பு",
+
+        "ai": "🤖 விளக்கக்கூடிய AI",
+        "why": "🔎 இந்த பரிவர்த்தனை ஏன் Flag செய்யப்பட்டது?",
+        "action": "🛡️ பரிந்துரைக்கப்படும் நடவடிக்கை",
+        "pipeline": "🧠 விளக்கக்கூடிய AI செயல்முறை",
+
+        "safe": "பாதுகாப்பானது",
+        "suspicious": "சந்தேகத்திற்கிடமானது",
+        "high": "அதிக ஆபத்து",
+
+        "safe_action": "இந்த பரிவர்த்தனை ஒப்பீட்டளவில் பாதுகாப்பாக உள்ளது. இருப்பினும் கவனமாக இருங்கள்.",
+        "suspicious_action": "தொடர்வதற்கு முன் பயனாளி மற்றும் பரிவர்த்தனை விவரங்களைச் சரிபார்க்கவும்.",
+        "high_action": "அதிகாரப்பூர்வ வழியில் சரிபார்க்கும் வரை பரிவர்த்தனையைத் தொடர வேண்டாம்.",
+
+        "message_input": "குறுஞ்செய்தியை இங்கே உள்ளிடவும்",
+        "call_input": "அழைப்பு உரையை இங்கே உள்ளிடவும்",
+
+        "empty": "முதலில் தகவலை உள்ளிடவும்.",
+
+        "amount_high": "அதிக பரிவர்த்தனை தொகை",
+        "amount_medium": "வழக்கத்தை விட அதிகமான தொகை",
+        "new_factor": "புதிய பயனாளி",
+        "failed_factor": "முந்தைய தோல்வியடைந்த முயற்சிகள்",
+        "unusual_factor": "வழக்கத்திற்கு மாறான பரிவர்த்தனை நேரம்",
+        "link_factor": "சந்தேகமான இணைப்பு",
+
+        "otp_factor": "OTP / சரிபார்ப்பு குறியீடு கேட்கப்பட்டது",
+        "urgent_factor": "அவசரப்படுத்தும் அல்லது மிரட்டும் மொழி",
+        "remote_factor": "தொலைநிலை அணுகல் கேட்கப்பட்டது",
+        "bank_factor": "வங்கி போல ஆள்மாறாட்டம் இருக்கலாம்",
+        "prize_factor": "பரிசு / வெகுமதி மோசடி இருக்கலாம்",
+        "external_factor": "வெளிப்புற இணைப்பு கண்டறியப்பட்டது",
+
+        "footer": "ஹேக்கத்தான் முன்மாதிரி — விளக்கக்கூடிய AI அடிப்படையிலான மோசடி கண்டறிதல்."
+    },
+
+    "Hindi": {
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "व्याख्यात्मक AI घोटाला पहचान प्रणाली",
+
+        "mode": "पहचान मोड",
+        "transaction": "💳 लेनदेन",
+        "message": "💬 संदेश",
+        "call": "📞 कॉल",
+
+        "amount": "लेनदेन राशि",
+        "new": "नया लाभार्थी",
+        "failed": "पिछले असफल प्रयास",
+        "unusual": "असामान्य लेनदेन समय",
+        "link": "संदिग्ध लिंक",
+
+        "analyze": "🔍 विश्लेषण करें",
+        "reset": "🔄 रीसेट",
+
+        "risk": "जोखिम स्कोर",
+        "factors": "जोखिम कारकों की संख्या",
+        "chart": "📊 जोखिम योगदान चार्ट",
+
+        "ai": "🤖 व्याख्यात्मक AI",
+        "why": "🔎 इस लेनदेन को क्यों Flag किया गया?",
+        "action": "🛡️ अनुशंसित कार्रवाई",
+        "pipeline": "🧠 व्याख्यात्मक AI प्रक्रिया",
+
+        "safe": "सुरक्षित",
+        "suspicious": "संदिग्ध",
+        "high": "उच्च जोखिम",
+
+        "safe_action": "लेनदेन अपेक्षाकृत सुरक्षित दिखाई देता है। फिर भी सावधान रहें।",
+        "suspicious_action": "आगे बढ़ने से पहले लाभार्थी और लेनदेन की जानकारी सत्यापित करें।",
+        "high_action": "आधिकारिक माध्यम से सत्यापन होने तक आगे न बढ़ें।",
+
+        "message_input": "संदेश यहां दर्ज करें",
+        "call_input": "कॉल का टेक्स्ट यहां दर्ज करें",
+
+        "empty": "कृपया पहले जानकारी दर्ज करें।",
+
+        "amount_high": "बहुत अधिक लेनदेन राशि",
+        "amount_medium": "सामान्य से अधिक लेनदेन राशि",
+        "new_factor": "नया लाभार्थी",
+        "failed_factor": "पिछले असफल प्रयास",
+        "unusual_factor": "असामान्य लेनदेन समय",
+        "link_factor": "संदिग्ध लिंक",
+
+        "otp_factor": "OTP / सत्यापन कोड का अनुरोध",
+        "urgent_factor": "तत्काल या धमकी भरी भाषा",
+        "remote_factor": "रिमोट एक्सेस का अनुरोध",
+        "bank_factor": "संभावित बैंक प्रतिरूपण",
+        "prize_factor": "इनाम / पुरस्कार का दावा",
+        "external_factor": "बाहरी लिंक मिला",
+
+        "footer": "हैकथॉन प्रोटोटाइप — व्याख्यात्मक AI आधारित घोटाला पहचान।"
+    },
+
+    "Telugu": {
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "వివరణాత్మక AI మోసం గుర్తింపు వ్యవస్థ",
+
+        "mode": "గుర్తింపు విధానం",
+        "transaction": "💳 లావాదేవీ",
+        "message": "💬 సందేశం",
+        "call": "📞 కాల్",
+
+        "amount": "లావాదేవీ మొత్తం",
+        "new": "కొత్త లబ్ధిదారు",
+        "failed": "మునుపటి విఫల ప్రయత్నాలు",
+        "unusual": "అసాధారణ లావాదేవీ సమయం",
+        "link": "అనుమానాస్పద లింక్",
+
+        "analyze": "🔍 విశ్లేషించండి",
+        "reset": "🔄 రీసెట్",
+
+        "risk": "ప్రమాద స్కోర్",
+        "factors": "ప్రమాద కారకాల సంఖ్య",
+        "chart": "📊 ప్రమాద సహకార చార్ట్",
+
+        "ai": "🤖 వివరణాత్మక AI",
+        "why": "🔎 ఈ లావాదేవీని ఎందుకు Flag చేశారు?",
+        "action": "🛡️ సిఫార్సు చేసిన చర్య",
+        "pipeline": "🧠 వివరణాత్మక AI ప్రక్రియ",
+
+        "safe": "సురక్షితం",
+        "suspicious": "అనుమానాస్పదం",
+        "high": "అధిక ప్రమాదం",
+
+        "safe_action": "లావాదేవీ సాపేక్షంగా సురక్షితంగా కనిపిస్తోంది. అయినా జాగ్రత్తగా ఉండండి.",
+        "suspicious_action": "కొనసాగించే ముందు లబ్ధిదారు మరియు వివరాలను ధృవీకరించండి.",
+        "high_action": "అధికారికంగా ధృవీకరించే వరకు కొనసాగవద్దు.",
+
+        "message_input": "సందేశాన్ని ఇక్కడ నమోదు చేయండి",
+        "call_input": "కాల్ టెక్స్ట్‌ను ఇక్కడ నమోదు చేయండి",
+
+        "empty": "దయచేసి ముందుగా సమాచారాన్ని నమోదు చేయండి.",
+
+        "amount_high": "అధిక లావాదేవీ మొత్తం",
+        "amount_medium": "సాధారణం కంటే ఎక్కువ మొత్తం",
+        "new_factor": "కొత్త లబ్ధిదారు",
+        "failed_factor": "మునుపటి విఫల ప్రయత్నాలు",
+        "unusual_factor": "అసాధారణ లావాదేవీ సమయం",
+        "link_factor": "అనుమానాస్పద లింక్",
+
+        "otp_factor": "OTP / ధృవీకరణ కోడ్ అభ్యర్థన",
+        "urgent_factor": "అత్యవసర లేదా బెదిరింపు భాష",
+        "remote_factor": "రిమోట్ యాక్సెస్ అభ్యర్థన",
+        "bank_factor": "బ్యాంక్ వలె నటించే అవకాశం",
+        "prize_factor": "బహుమతి / రివార్డ్ క్లెయిమ్",
+        "external_factor": "బాహ్య లింక్ కనుగొనబడింది",
+
+        "footer": "హ్యాకథాన్ ప్రోటోటైప్ — వివరణాత్మక AI ఆధారిత మోసం గుర్తింపు."
+    },
+
+    "Malayalam": {
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "Explainable AI തട്ടിപ്പ് കണ്ടെത്തൽ സംവിധാനം",
+
+        "mode": "കണ്ടെത്തൽ മോഡ്",
+        "transaction": "💳 ഇടപാട്",
+        "message": "💬 സന്ദേശം",
+        "call": "📞 കോൾ",
+
+        "amount": "ഇടപാട് തുക",
+        "new": "പുതിയ ഗുണഭോക്താവ്",
+        "failed": "മുമ്പത്തെ പരാജയപ്പെട്ട ശ്രമങ്ങൾ",
+        "unusual": "അസാധാരണ ഇടപാട് സമയം",
+        "link": "സംശയാസ്പദമായ ലിങ്ക്",
+
+        "analyze": "🔍 പരിശോധിക്കുക",
+        "reset": "🔄 റീസെറ്റ്",
+
+        "risk": "റിസ്ക് സ്കോർ",
+        "factors": "റിസ്ക് ഘടകങ്ങളുടെ എണ്ണം",
+        "chart": "📊 റിസ്ക് കോൺട്രിബ്യൂഷൻ ചാർട്ട്",
+
+        "ai": "🤖 Explainable AI",
+        "why": "🔎 ഈ ഇടപാട് Flag ചെയ്തത് എന്തുകൊണ്ട്?",
+        "action": "🛡️ ശുപാർശ ചെയ്യുന്ന നടപടി",
+        "pipeline": "🧠 Explainable AI പ്രക്രിയ",
+
+        "safe": "സുരക്ഷിതം",
+        "suspicious": "സംശയാസ്പദം",
+        "high": "ഉയർന്ന റിസ്ക്",
+
+        "safe_action": "ഇടപാട് താരതമ്യേന സുരക്ഷിതമാണ്. എന്നിരുന്നാലും ജാഗ്രത പാലിക്കുക.",
+        "suspicious_action": "തുടരുന്നതിന് മുമ്പ് ഗുണഭോക്താവിനെയും വിവരങ്ങളെയും പരിശോധിക്കുക.",
+        "high_action": "ഔദ്യോഗികമായി പരിശോധിക്കുന്നതുവരെ തുടരരുത്.",
+
+        "message_input": "സന്ദേശം ഇവിടെ നൽകുക",
+        "call_input": "കോൾ ടെക്സ്റ്റ് ഇവിടെ നൽകുക",
+
+        "empty": "ദയവായി ആദ്യം വിവരങ്ങൾ നൽകുക.",
+
+        "amount_high": "വളരെ ഉയർന്ന ഇടപാട് തുക",
+        "amount_medium": "സാധാരണയേക്കാൾ ഉയർന്ന തുക",
+        "new_factor": "പുതിയ ഗുണഭോക്താവ്",
+        "failed_factor": "മുമ്പത്തെ പരാജയപ്പെട്ട ശ്രമങ്ങൾ",
+        "unusual_factor": "അസാധാരണ ഇടപാട് സമയം",
+        "link_factor": "സംശയാസ്പദമായ ലിങ്ക്",
+
+        "otp_factor": "OTP / verification code ആവശ്യപ്പെട്ടു",
+        "urgent_factor": "അടിയന്തരമായ അല്ലെങ്കിൽ ഭീഷണിപ്പെടുത്തുന്ന ഭാഷ",
+        "remote_factor": "Remote access ആവശ്യപ്പെട്ടു",
+        "bank_factor": "ബാങ്ക് ആയി നടിക്കുന്നതായി തോന്നുന്നു",
+        "prize_factor": "സമ്മാനം / റിവാർഡ് അവകാശവാദം",
+        "external_factor": "External link കണ്ടെത്തി",
+
+        "footer": "Hackathon prototype — Explainable AI അടിസ്ഥാനമാക്കിയുള്ള തട്ടിപ്പ് കണ്ടെത്തൽ."
+    },
+
+    "Kannada": {
+        "title": "🛡️ ScamShield XAI",
+        "subtitle": "ವಿವರಣಾತ್ಮಕ AI ಮೋಸ ಪತ್ತೆ ವ್ಯವಸ್ಥೆ",
+
+        "mode": "ಪತ್ತೆ ಮೋಡ್",
+        "transaction": "💳 ವಹಿವಾಟು",
+        "message": "💬 ಸಂದೇಶ",
+        "call": "📞 ಕರೆ",
+
+        "amount": "ವಹಿವಾಟಿನ ಮೊತ್ತ",
+        "new": "ಹೊಸ ಫಲಾನುಭವಿ",
+        "failed": "ಹಿಂದಿನ ವಿಫಲ ಪ್ರಯತ್ನಗಳು",
+        "unusual": "ಅಸಾಮಾನ್ಯ ವಹಿವಾಟು ಸಮಯ",
+        "link": "ಅನುಮಾನಾಸ್ಪದ ಲಿಂಕ್",
+
+        "analyze": "🔍 ವಿಶ್ಲೇಷಿಸಿ",
+        "reset": "🔄 ಮರುಹೊಂದಿಸಿ",
+
+        "risk": "ಅಪಾಯ ಸ್ಕೋರ್",
+        "factors": "ಅಪಾಯದ ಅಂಶಗಳ ಸಂಖ್ಯೆ",
+        "chart": "📊 ಅಪಾಯ ಕೊಡುಗೆ ಚಾರ್ಟ್",
+
+        "ai": "🤖 Explainable AI",
+        "why": "🔎 ಈ ವಹಿವಾಟನ್ನು Flag ಮಾಡಿದ್ದು ಏಕೆ?",
+        "action": "🛡️ ಶಿಫಾರಸು ಮಾಡಿದ ಕ್ರಮ",
+        "pipeline": "🧠 Explainable AI ಪ್ರಕ್ರಿಯೆ",
+
+        "safe": "ಸುರಕ್ಷಿತ",
+        "suspicious": "ಅನುಮಾನಾಸ್ಪದ",
+        "high": "ಹೆಚ್ಚಿನ ಅಪಾಯ",
+
+        "safe_action": "ವಹಿವಾಟು ತುಲನಾತ್ಮಕವಾಗಿ ಸುರಕ್ಷಿತವಾಗಿದೆ. ಆದರೂ ಜಾಗರೂಕರಾಗಿರಿ.",
+        "suspicious_action": "ಮುಂದುವರಿಯುವ ಮೊದಲು ಫಲಾನುಭವಿ ಮತ್ತು ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
+        "high_action": "ಅಧಿಕೃತವಾಗಿ ಪರಿಶೀಲಿಸುವವರೆಗೆ ಮುಂದುವರಿಯಬೇಡಿ.",
+
+        "message_input": "ಸಂದೇಶವನ್ನು ಇಲ್ಲಿ ನಮೂದಿಸಿ",
+        "call_input": "ಕರೆ ಪಠ್ಯವನ್ನು ಇಲ್ಲಿ ನಮೂದಿಸಿ",
+
+        "empty": "ದಯವಿಟ್ಟು ಮೊದಲು ಮಾಹಿತಿಯನ್ನು ನಮೂದಿಸಿ.",
+
+        "amount_high": "ಹೆಚ್ಚಿನ ವಹಿವಾಟಿನ ಮೊತ್ತ",
+        "amount_medium": "ಸಾಮಾನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿನ ಮೊತ್ತ",
+        "new_factor": "ಹೊಸ ಫಲಾನುಭವಿ",
+        "failed_factor": "ಹಿಂದಿನ ವಿಫಲ ಪ್ರಯತ್ನಗಳು",
+        "unusual_factor": "ಅಸಾಮಾನ್ಯ ವಹಿವಾಟು ಸಮಯ",
+        "link_factor": "ಅನುಮಾನಾಸ್ಪದ ಲಿಂಕ್",
+
+        "otp_factor": "OTP / ಪರಿಶೀಲನಾ ಕೋಡ್ ವಿನಂತಿ",
+        "urgent_factor": "ತುರ್ತು ಅಥವಾ ಬೆದರಿಕೆಯ ಭಾಷೆ",
+        "remote_factor": "ರಿಮೋಟ್ ಪ್ರವೇಶ ವಿನಂತಿ",
+        "bank_factor": "ಬ್ಯಾಂಕ್‌ನಂತೆ ನಟಿಸುವ ಸಾಧ್ಯತೆ",
+        "prize_factor": "ಬಹುಮಾನ / ರಿವಾರ್ಡ್ ಹೇಳಿಕೆ",
+        "external_factor": "ಬಾಹ್ಯ ಲಿಂಕ್ ಕಂಡುಬಂದಿದೆ",
+
+        "footer": "Hackathon prototype — Explainable AI ಆಧಾರಿತ ಮೋಸ ಪತ್ತೆ."
     }
-    .big-risk-medium {
-        background-color:#fff6da; color:#8a6100; padding:16px;
-        border-radius:12px; font-size:24px; font-weight:800; text-align:center;
-        border:2px solid #ffcc00;
-    }
-    .big-risk-low {
-        background-color:#e2fbe6; color:#0a6b1e; padding:16px;
-        border-radius:12px; font-size:24px; font-weight:800; text-align:center;
-        border:2px solid #2ecc71;
-    }
-    .factor-card {
-        background-color:#f7f8fa; border-radius:10px; padding:10px 14px;
-        margin-bottom:8px; border-left:5px solid #ff6b6b;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# -----------------------------------------------------------------------
-# HELPER: risk banner + gauge
-# -----------------------------------------------------------------------
-def risk_band(score: float):
-    if score >= 70:
-        return "HIGH RISK", "big-risk-high", "🚨"
-    elif score >= 35:
-        return "MEDIUM RISK", "big-risk-medium", "⚠️"
-    else:
-        return "LOW RISK", "big-risk-low", "✅"
-
-
-def render_header(score: float):
-    label, css_class, emoji = risk_band(score)
-    st.markdown(
-        f'<div class="{css_class}">{emoji} {label} &nbsp;|&nbsp; Risk Score: {score:.0f} / 100</div>',
-        unsafe_allow_html=True,
-    )
-
-
-def render_gauge(score: float):
-    fig = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=score,
-            number={"suffix": " /100"},
-            gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "#2c3e50"},
-                "steps": [
-                    {"range": [0, 35], "color": "#d4f7dc"},
-                    {"range": [35, 70], "color": "#fff3cd"},
-                    {"range": [70, 100], "color": "#ffd6d6"},
-                ],
-                "threshold": {
-                    "line": {"color": "red", "width": 4},
-                    "thickness": 0.8,
-                    "value": score,
-                },
-            },
-        )
-    )
-    fig.update_layout(height=260, margin=dict(l=10, r=10, t=10, b=10))
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def render_contribution_chart(contributions: dict):
-    df = pd.DataFrame(
-        {"Factor": list(contributions.keys()), "Contribution": list(contributions.values())}
-    )
-    df = df[df["Contribution"] > 0].sort_values("Contribution", ascending=True)
-    if df.empty:
-        st.info("No significant risk factors contributed to this score.")
-        return
-    fig = px.bar(
-        df,
-        x="Contribution",
-        y="Factor",
-        orientation="h",
-        color="Contribution",
-        color_continuous_scale=["#f1c40f", "#e67e22", "#e74c3c"],
-        text="Contribution",
-    )
-    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-    fig.update_layout(height=380, showlegend=False, margin=dict(l=10, r=10, t=30, b=10))
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def render_factor_explanations(explanations: dict):
-    for factor, text in explanations.items():
-        st.markdown(
-            f'<div class="factor-card"><b>{factor}</b><br>{text}</div>',
-            unsafe_allow_html=True,
-        )
-
-
-def render_recommendation(score: float, domain: str):
-    label, _, _ = risk_band(score)
-    actions = {
-        "HIGH RISK": {
-            "SMS": "🚫 Do NOT click any link. Block sender and report as spam. Never share OTP/PIN.",
-            "Email": "🚫 Do NOT click links or download attachments. Verify sender via official channel. Report as phishing.",
-            "Call": "🚫 Hang up immediately. Do not share OTP, PIN, or bank details. Block and report the number.",
-            "Transaction": "🚫 Hold/decline transaction. Trigger manual review and step-up authentication (OTP/biometric).",
-        },
-        "MEDIUM RISK": {
-            "SMS": "⚠️ Verify sender identity independently before acting. Avoid clicking embedded links.",
-            "Email": "⚠️ Confirm with sender via a separate channel before responding or clicking anything.",
-            "Call": "⚠️ Ask caller to verify identity via official callback number before sharing any info.",
-            "Transaction": "⚠️ Flag for secondary verification (SMS/email OTP) before approval.",
-        },
-        "LOW RISK": {
-            "SMS": "✅ Appears safe. Standard monitoring is sufficient.",
-            "Email": "✅ Appears safe. No action needed beyond routine spam filtering.",
-            "Call": "✅ Appears safe. No unusual pattern detected.",
-            "Transaction": "✅ Appears safe. Proceed with normal processing.",
-        },
-    }
-    st.success(actions[label][domain]) if label == "LOW RISK" else st.error(actions[label][domain]) if label == "HIGH RISK" else st.warning(actions[label][domain])
-
-
-def render_pipeline():
-    with st.expander("🧠 Explainable AI Pipeline — how the score is built"):
-        st.markdown(
-            """
-1. **Input capture** — Raw message / call metadata / transaction fields are collected from the form.
-2. **Feature extraction** — Rule-based & pattern features are derived (keywords, links, urgency phrases, numeric anomalies, geo/velocity signals).
-3. **Weighted scoring engine** — Each feature has a transparent weight (learned heuristically / from a trained model), producing a partial risk contribution.
-4. **Aggregation** — Contributions are summed and squashed (sigmoid-style) into a 0–100 Risk Score.
-5. **Explainability layer** — Each contributing factor is surfaced with its share of the score (SHAP-style local explanation) and a plain-language reason.
-6. **Decision layer** — Score is mapped to LOW / MEDIUM / HIGH bands, each tied to a recommended action.
-            """
-        )
-
-
-def summary_reason(top_factors: list, domain_word: str):
-    if not top_factors:
-        st.info(f"No strong red flags were found in this {domain_word}.")
-        return
-    bullets = "\n".join([f"- **{f}**" for f in top_factors])
-    st.markdown(f"This {domain_word} was flagged mainly because of:\n\n{bullets}")
-
-
-# -----------------------------------------------------------------------
-# SCORING HELPERS (shared)
-# -----------------------------------------------------------------------
-def squash(raw_sum: float, scale: float = 18.0) -> float:
-    """Convert an additive weighted sum into a 0-100 score with a sigmoid squash."""
-    return 100 / (1 + math.exp(-raw_sum / scale + 3))
-
-
-# =========================================================================
-# MODULE 1: SMS / MESSAGE TEXT SCAM DETECTION
-# =========================================================================
-SMS_KEYWORDS = {
-    "urgent action required": 12, "verify your account": 10, "click here": 9,
-    "won a prize": 14, "lottery": 14, "otp": 11, "suspended": 10,
-    "limited time": 8, "free gift": 9, "act now": 9, "bank account": 8,
-    "kyc": 9, "refund": 7, "congratulations": 7, "claim now": 10,
-    "password": 8, "update your details": 9, "loan approved": 10,
 }
 
-def analyze_sms(text: str, sender_unknown: bool, contains_link: bool, asks_for_otp: bool):
-    text_l = text.lower()
-    contributions, explanations = {}, {}
+# =========================================================
+# SCAM ANALYSIS
+# =========================================================
 
-    kw_hits = [kw for kw in SMS_KEYWORDS if kw in text_l]
-    if kw_hits:
-        contrib = sum(SMS_KEYWORDS[k] for k in kw_hits)
-        contributions["Suspicious keywords"] = contrib
-        explanations["Suspicious keywords"] = f"Found {len(kw_hits)} scam-associated phrase(s): {', '.join(kw_hits)}."
+def analyze_transaction(amount, new_beneficiary, failed, unusual, link, t):
 
-    caps_ratio = sum(1 for c in text if c.isupper()) / max(len(text), 1)
-    if caps_ratio > 0.3:
-        contributions["Excessive capitalization"] = 8
-        explanations["Excessive capitalization"] = f"{caps_ratio*100:.0f}% of characters are uppercase — common urgency tactic."
+    factors = []
 
-    link_count = len(re.findall(r"(https?://|www\.)\S+", text))
-    if contains_link or link_count > 0:
-        contributions["Contains link(s)"] = 12 + 4 * min(link_count, 2)
-        explanations["Contains link(s)"] = "Message contains embedded URL(s), often used for phishing redirection."
+    if amount >= 50000:
+        factors.append((t["amount_high"], 30))
 
-    if sender_unknown:
-        contributions["Unknown / unsaved sender"] = 10
-        explanations["Unknown / unsaved sender"] = "Sender number is not in contacts and has no prior history."
+    elif amount >= 20000:
+        factors.append((t["amount_medium"], 20))
 
-    if asks_for_otp:
-        contributions["Requests OTP/PIN"] = 20
-        explanations["Requests OTP/PIN"] = "Legitimate institutions never ask you to share OTP or PIN via SMS."
+    if new_beneficiary:
+        factors.append((t["new_factor"], 25))
 
-    phone_count = len(re.findall(r"\b\d{10}\b", text))
-    if phone_count:
-        contributions["Embedded phone number"] = 6
-        explanations["Embedded phone number"] = "Message asks you to call an embedded number directly — common vishing pattern."
+    if failed >= 2:
+        factors.append((t["failed_factor"], 15))
 
-    raw_sum = sum(contributions.values())
-    score = min(squash(raw_sum, scale=20), 100)
-    return score, contributions, explanations
+    elif failed == 1:
+        factors.append((t["failed_factor"], 5))
+
+    if unusual:
+        factors.append((t["unusual_factor"], 10))
+
+    if link:
+        factors.append((t["link_factor"], 30))
+
+    return factors
 
 
-# =========================================================================
-# MODULE 2: EMAIL PHISHING DETECTION
-# =========================================================================
-EMAIL_KEYWORDS = {
-    "verify your account": 11, "unusual activity": 10, "click the link below": 12,
-    "update payment": 10, "your account will be suspended": 13, "invoice attached": 6,
-    "wire transfer": 12, "gift card": 13, "urgent": 8, "password expires": 9,
-    "confirm your identity": 10, "security alert": 8,
-}
+def analyze_text(text, t):
 
-def analyze_email(subject: str, body: str, sender_domain: str, expected_domain: str,
-                   has_attachment: bool, mismatched_display_name: bool):
-    text_l = (subject + " " + body).lower()
-    contributions, explanations = {}, {}
+    text = text.lower()
+    factors = []
 
-    kw_hits = [kw for kw in EMAIL_KEYWORDS if kw in text_l]
-    if kw_hits:
-        contrib = sum(EMAIL_KEYWORDS[k] for k in kw_hits)
-        contributions["Suspicious phrasing"] = contrib
-        explanations["Suspicious phrasing"] = f"Detected phishing-style phrase(s): {', '.join(kw_hits)}."
+    otp_words = [
+        "otp",
+        "pin",
+        "password",
+        "verification code",
+        "சரிபார்ப்பு குறியீடு"
+    ]
 
-    if expected_domain and sender_domain and expected_domain.lower() not in sender_domain.lower():
-        contributions["Domain mismatch"] = 22
-        explanations["Domain mismatch"] = f"Sender domain '{sender_domain}' does not match the expected organization domain '{expected_domain}'."
+    urgent_words = [
+        "urgent",
+        "immediately",
+        "now",
+        "blocked",
+        "arrest",
+        "police",
+        "உடனே",
+        "இப்போதே",
+        "மிரட்டல்"
+    ]
 
-    if mismatched_display_name:
-        contributions["Spoofed display name"] = 14
-        explanations["Spoofed display name"] = "Display name looks legitimate but the underlying email address doesn't match."
+    remote_words = [
+        "anydesk",
+        "teamviewer",
+        "remote access",
+        "screen share"
+    ]
 
-    link_count = len(re.findall(r"(https?://|www\.)\S+", body))
-    if link_count:
-        contributions["Embedded links"] = 10 + 3 * min(link_count, 3)
-        explanations["Embedded links"] = f"{link_count} link(s) found in the email body — verify destination before clicking."
+    bank_words = [
+        "bank",
+        "kyc",
+        "account blocked",
+        "வங்கி",
+        "கணக்கு"
+    ]
 
-    if has_attachment:
-        contributions["Unexpected attachment"] = 9
-        explanations["Unexpected attachment"] = "Attachments can carry malware/macros — confirm relevance with sender first."
+    prize_words = [
+        "winner",
+        "prize",
+        "reward",
+        "lottery",
+        "பரிசு",
+        "வெற்றி"
+    ]
 
-    raw_sum = sum(contributions.values())
-    score = min(squash(raw_sum, scale=22), 100)
-    return score, contributions, explanations
+    if any(word in text for word in otp_words):
+        factors.append((t["otp_factor"], 25))
 
+    if any(word in text for word in urgent_words):
+        factors.append((t["urgent_factor"], 20))
 
-# =========================================================================
-# MODULE 3: CALL / PHONE NUMBER SCAM DETECTION
-# =========================================================================
-def analyze_call(phone_number: str, country_mismatch: bool, robocall_pattern: bool,
-                  asked_for_otp: bool, asked_for_money: bool, call_duration_sec: int,
-                  reported_count: int):
-    contributions, explanations = {}, {}
+    if any(word in text for word in remote_words):
+        factors.append((t["remote_factor"], 30))
 
-    if country_mismatch:
-        contributions["Unexpected international code"] = 14
-        explanations["Unexpected international code"] = "Call originates from a country code unusual for this account/context."
+    if any(word in text for word in bank_words):
+        factors.append((t["bank_factor"], 15))
 
-    if robocall_pattern:
-        contributions["Robocall / auto-dialer pattern"] = 12
-        explanations["Robocall / auto-dialer pattern"] = "Call behavior matches known robocall/auto-dialer signatures (silence gap, scripted tone)."
+    if any(word in text for word in prize_words):
+        factors.append((t["prize_factor"], 20))
 
-    if asked_for_otp:
-        contributions["Requested OTP/PIN"] = 25
-        explanations["Requested OTP/PIN"] = "Caller asked for a one-time password or PIN — a strong scam indicator."
+    if (
+        "http://" in text
+        or "https://" in text
+        or "bit.ly" in text
+        or "tinyurl" in text
+    ):
+        factors.append((t["external_factor"], 30))
 
-    if asked_for_money:
-        contributions["Requested payment/gift cards"] = 20
-        explanations["Requested payment/gift cards"] = "Caller pressured for immediate payment, wire transfer, or gift cards."
-
-    if call_duration_sec < 15:
-        contributions["Very short call"] = 5
-        explanations["Very short call"] = "Extremely short duration is typical of scam probing/robocalls."
-
-    if reported_count > 0:
-        contributions["Community-reported number"] = min(10 + reported_count * 2, 30)
-        explanations["Community-reported number"] = f"This number has been reported {reported_count} time(s) by other users."
-
-    raw_sum = sum(contributions.values())
-    score = min(squash(raw_sum, scale=22), 100)
-    return score, contributions, explanations
+    return factors
 
 
-# =========================================================================
-# MODULE 4: TRANSACTION FRAUD DETECTION
-# =========================================================================
-def analyze_transaction(amount: float, avg_amount: float, distance_from_home_km: float,
-                         distance_from_last_txn_km: float, is_online: bool, is_foreign: bool,
-                         hour_of_day: int, new_device: bool):
-    contributions, explanations = {}, {}
+# =========================================================
+# RESULT DISPLAY
+# =========================================================
 
-    ratio = amount / max(avg_amount, 1)
-    if ratio > 3:
-        contributions["Amount far above average"] = min(10 * ratio, 30)
-        explanations["Amount far above average"] = f"Transaction amount is {ratio:.1f}x the account's average purchase."
+def display_result(factors, t):
 
-    if distance_from_home_km > 100:
-        contributions["Unusual location (far from home)"] = min(distance_from_home_km / 20, 20)
-        explanations["Unusual location (far from home)"] = f"Transaction occurred {distance_from_home_km:.0f} km from the account's home location."
-
-    if distance_from_last_txn_km > 300:
-        contributions["Impossible travel velocity"] = 20
-        explanations["Impossible travel velocity"] = f"{distance_from_last_txn_km:.0f} km from the previous transaction in a short time window — physically implausible."
-
-    if is_online:
-        contributions["Card-not-present (online)"] = 6
-        explanations["Card-not-present (online)"] = "Online transactions carry higher fraud risk than in-person chip/PIN."
-
-    if is_foreign:
-        contributions["Foreign transaction"] = 9
-        explanations["Foreign transaction"] = "Transaction originates from a country different from the cardholder's registered country."
-
-    if hour_of_day < 5 or hour_of_day > 23:
-        contributions["Odd transaction hour"] = 7
-        explanations["Odd transaction hour"] = f"Transaction occurred at {hour_of_day}:00, outside typical spending hours."
-
-    if new_device:
-        contributions["New/unrecognized device"] = 11
-        explanations["New/unrecognized device"] = "Transaction initiated from a device not previously linked to this account."
-
-    raw_sum = sum(contributions.values())
-    score = min(squash(raw_sum, scale=20), 100)
-    return score, contributions, explanations
-
-
-# -----------------------------------------------------------------------
-# SIDEBAR
-# -----------------------------------------------------------------------
-st.sidebar.title("🛡️ Scam & Fraud Detector")
-st.sidebar.caption("Explainable AI risk engine — SMS, Email, Call & Transaction")
-render_pipeline_sidebar = st.sidebar.container()
-
-# -----------------------------------------------------------------------
-# MAIN TITLE
-# -----------------------------------------------------------------------
-st.title("🛡️ Universal Scam & Fraud Detection Dashboard")
-st.caption("Enter details below and get an instant explainable risk assessment.")
-
-tab_sms, tab_email, tab_call, tab_txn = st.tabs(
-    ["📱 SMS / Message", "📧 Email", "📞 Call / Phone", "💳 Transaction"]
-)
-
-# ---------------- TAB: SMS ----------------
-with tab_sms:
-    st.subheader("📱 SMS / Message Scam Check")
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        sms_text = st.text_area(
-            "Paste the message text",
-            "Dear customer, your account will be SUSPENDED. Click here to verify your account and claim now your refund. Share OTP to confirm.",
-            height=120,
-        )
-    with col2:
-        sender_unknown = st.checkbox("Sender is unknown/unsaved", value=True)
-        contains_link = st.checkbox("Message contains a link", value=True)
-        asks_otp = st.checkbox("Message asks for OTP/PIN", value=True)
-
-    if st.button("🔍 Analyze Message", key="sms_btn"):
-        score, contrib, expl = analyze_sms(sms_text, sender_unknown, contains_link, asks_otp)
-        render_header(score)
-        c1, c2 = st.columns(2)
-        with c1:
-            render_gauge(score)
-        with c2:
-            st.metric("Number of Risk Factors", len(contrib))
-        st.subheader("📊 Risk Contribution Chart")
-        render_contribution_chart(contrib)
-        st.subheader("🤖 Explainable AI — Factor Breakdown")
-        render_factor_explanations(expl)
-        st.subheader("🔎 Why Was This Flagged?")
-        summary_reason(sorted(contrib, key=contrib.get, reverse=True)[:3], "message")
-        st.subheader("🛡️ Recommended Action")
-        render_recommendation(score, "SMS")
-
-# ---------------- TAB: EMAIL ----------------
-with tab_email:
-    st.subheader("📧 Email Phishing Check")
-    subject = st.text_input("Email subject", "Urgent: Verify your account now")
-    body = st.text_area(
-        "Email body",
-        "We noticed unusual activity. Click the link below to confirm your identity and update payment details immediately, or your account will be suspended.",
-        height=120,
-    )
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        sender_domain = st.text_input("Sender domain", "secure-bank-alerts.com")
-    with c2:
-        expected_domain = st.text_input("Expected official domain", "bank.com")
-    with c3:
-        has_attachment = st.checkbox("Has attachment", value=False)
-    mismatched_name = st.checkbox("Display name looks official but address doesn't match", value=True)
-
-    if st.button("🔍 Analyze Email", key="email_btn"):
-        score, contrib, expl = analyze_email(subject, body, sender_domain, expected_domain, has_attachment, mismatched_name)
-        render_header(score)
-        c1, c2 = st.columns(2)
-        with c1:
-            render_gauge(score)
-        with c2:
-            st.metric("Number of Risk Factors", len(contrib))
-        st.subheader("📊 Risk Contribution Chart")
-        render_contribution_chart(contrib)
-        st.subheader("🤖 Explainable AI — Factor Breakdown")
-        render_factor_explanations(expl)
-        st.subheader("🔎 Why Was This Flagged?")
-        summary_reason(sorted(contrib, key=contrib.get, reverse=True)[:3], "email")
-        st.subheader("🛡️ Recommended Action")
-        render_recommendation(score, "Email")
-
-# ---------------- TAB: CALL ----------------
+    if not factors:
+        factors = [("No major risk factor detected", 0)]
